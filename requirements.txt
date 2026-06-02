@@ -2,3 +2,4 @@ streamlit
 python-pptx
 pypdf
 google-generativeai
+PyMuPDF
