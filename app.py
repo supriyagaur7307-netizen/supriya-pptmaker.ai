@@ -2,63 +2,70 @@ import streamlit as st
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
-import fitz  # PyMuPDF
+import fitz
 import io
 
-# Page Config
-st.set_page_config(page_title="Supriya ppt maker .ai", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="Supriya ppt maker .ai", layout="wide")
 
-# CSS Styling (Gamma-like UI)
+# CSS for Stylish Header and Dark UI
 st.markdown("""
     <style>
-    .main-header { font-size: 42px; font-weight: 800; text-align: center; color: #38bdf8; }
-    .gamma-card { background: #111827; border-radius: 16px; padding: 24px; border: 1px solid #1f2937; }
+    .stApp { background-color: #050505; }
+    .stylish-title { 
+        font-family: 'Segoe UI', sans-serif; 
+        font-size: 50px; 
+        font-weight: 900; 
+        background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-align: center;
+        margin-bottom: 30px;
+    }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-st.markdown('<div class="main-header">🚀 Supriya ppt maker .ai</div>', unsafe_allow_html=True)
+st.markdown('<h1 class="stylish-title">🚀 Supriya ppt maker .ai</h1>', unsafe_allow_html=True)
+
+# SIDEBAR DESIGN STUDIO
+st.sidebar.header("🎨 Design Studio")
+theme_bg = st.sidebar.color_picker("Pick Background Color", "#0f172a")
+theme_accent = st.sidebar.color_picker("Pick Accent Color", "#38bdf8")
+font_choice = st.sidebar.selectbox("Choose Font:", ["Arial", "Calibri", "Verdana", "Georgia", "Trebuchet MS"])
 
 col1, col2 = st.columns([1, 2])
 
 with col1:
-    st.markdown('<div class="gamma-card">', unsafe_allow_html=True)
-    st.subheader("📁 Upload Module")
-    uploaded_file = st.file_uploader("PDF upload karein:", type=["pdf"])
-    st.markdown('</div>', unsafe_allow_html=True)
+    uploaded_file = st.file_uploader("Upload PDF:", type=["pdf"])
 
 with col2:
     if uploaded_file:
-        pdf_bytes = uploaded_file.read()
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-        
+        doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
         prs = Presentation()
-        prs.slide_width = Inches(13.333)
-        prs.slide_height = Inches(7.5)
         
-        # Slides loop with Text Editor
-        for index, page in enumerate(doc):
-            text_content = page.get_text()
-            
-            # Text Editor Expander
-            with st.expander(f"⚙️ Slide Layout {index + 1} Editor", expanded=(index==0)):
-                edited_title = st.text_input(f"Slide {index+1} Title:", value=f"Topic {index+1}", key=f"t_{index}")
-                edited_body = st.text_area(f"Slide {index+1} Content:", value=text_content[:200], key=f"b_{index}")
+        for i, page in enumerate(doc):
+            text = page.get_text()
+            with st.expander(f"⚙️ Slide {i+1} Editor", expanded=(i==0)):
+                title = st.text_input(f"Title {i+1}", value=f"Topic {i+1}", key=f"t{i}")
+                content = st.text_area(f"Content {i+1}", value=text[:300], key=f"c{i}")
             
             # Slide Creation
             slide = prs.slides.add_slide(prs.slide_layouts[6])
             fill = slide.background.fill
             fill.solid()
-            fill.fore_color.rgb = RGBColor(15, 23, 42) # Midnight Navy
+            # Convert hex to RGB for PPT
+            r, g, b = tuple(int(theme_bg.lstrip('#')[j:j+2], 16) for j in (0, 2, 4))
+            fill.fore_color.rgb = RGBColor(r, g, b)
             
-            # Adding Text to Slide
-            title_box = slide.shapes.add_textbox(Inches(0.8), Inches(0.6), Inches(11), Inches(1))
-            title_box.text_frame.text = edited_title
+            # Title
+            t_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.5), Inches(12), Inches(1))
+            p = t_box.text_frame.paragraphs[0]
+            p.text = title
+            p.font.name = font_choice
+            p.font.size = Pt(40)
             
-        ppt_buffer = io.BytesIO()
-        prs.save(ppt_buffer)
-        ppt_buffer.seek(0)
-        
-        if st.button("Generate & Download"):
-            st.balloons() # Confetti effect
-            st.success("🎉 Gamma-Style Layout Compiled Perfectly!")
-            st.download_button("📥 Download Presentation", ppt_buffer, "Supriya_Presentation.pptx")
+        if st.button("Generate Final PPT ⚡"):
+            st.balloons()
+            buf = io.BytesIO()
+            prs.save(buf)
+            buf.seek(0)
+            st.download_button("📥 Download Premium PPT", buf, "Supriya_Premium.pptx")
