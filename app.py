@@ -2,74 +2,68 @@ import streamlit as st
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
-import fitz  # PyMuPDF
+from pptx.enum.shapes import MSO_SHAPE
+import fitz
 import io
 import requests
 
-# Page Config
-st.set_page_config(page_title="Supriya PPT Maker Pro", layout="wide")
+st.set_page_config(page_title="Supriya Presentation Studio AI", layout="wide")
 
-# Theme Profiles
-THEMES = {
-    "Midnight Navy": {"bg": "#0f172a", "title": "#38bdf8", "body": "#cbd5e1"},
-    "Corporate Elite": {"bg": "#ffffff", "title": "#1e293b", "body": "#475569"},
-    "Modern Dark": {"bg": "#121212", "title": "#facc15", "body": "#e2e8f0"}
-}
+# CSS for Studio Feel
+st.markdown("""<style>.stApp {background: #050505; color: #e2e8f0;}</style>""", unsafe_allow_html=True)
 
-def hex_to_rgb(hex_str):
-    h = hex_str.lstrip('#')
-    return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+# Customization Sidebar
+st.sidebar.header("🎨 Studio Design Panel")
+theme_color = st.sidebar.color_picker("Pick Brand Color", "#38bdf8")
+font_choice = st.sidebar.selectbox("Font Style", ["Arial", "Calibri", "Helvetica", "Verdana"])
 
-def get_smart_image(keyword):
-    # Dynamic Search Query
-    query = keyword.replace(" ", "+")
-    url = f"https://source.unsplash.com/800x600/?{query}"
+def get_dynamic_image(title):
+    # Context-aware image search
+    url = f"https://source.unsplash.com/800x600/?{title.replace(' ', '+')}"
     try:
         res = requests.get(url, timeout=5)
-        if res.status_code == 200:
-            return io.BytesIO(res.content)
-    except:
-        return None
-    return None
+        return io.BytesIO(res.content) if res.status_code == 200 else None
+    except: return None
 
-st.title("🚀 Supriya PPT Maker Pro")
-theme_name = st.sidebar.selectbox("Select Theme:", list(THEMES.keys()))
-theme = THEMES[theme_name]
+def create_slide(prs, title, points, color_hex, font):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    
+    # Background - Premium Dark
+    fill = slide.background.fill
+    fill.solid()
+    fill.fore_color.rgb = RGBColor(10, 10, 10)
+    
+    # Title - Dynamic
+    title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.4), Inches(12), Inches(1))
+    p = title_box.text_frame.paragraphs[0]
+    p.text, p.font.size, p.font.bold = title, Pt(44), True
+    p.font.color.rgb = RGBColor.from_string(color_hex.lstrip('#'))
+    
+    # Body - Professional List
+    body_box = slide.shapes.add_textbox(Inches(0.5), Inches(1.8), Inches(6), Inches(4))
+    for pt in points:
+        p = body_box.text_frame.add_paragraph()
+        p.text, p.font.size, p.font.name = f"• {pt}", Pt(24), font
+        p.font.color.rgb = RGBColor(255, 255, 255)
+        p.space_after = Pt(20)
+        
+    # Image - Unique for each slide
+    img_data = get_dynamic_image(title)
+    if img_data:
+        slide.shapes.add_picture(img_data, Inches(7.2), Inches(1.8), Inches(5.5), Inches(4))
 
-uploaded_file = st.file_uploader("Upload PDF:", type=["pdf"])
-
+# Execution
+uploaded_file = st.file_uploader("Upload PDF Notes:", type=["pdf"])
 if uploaded_file:
     doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
     prs = Presentation()
     prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
-
-    for i, page in enumerate(doc):
-        text = page.get_text().split('\n')
-        title = text[0] if text else "Slide " + str(i+1)
-        points = [l for l in text[1:6] if len(l) > 10]
+    
+    for page in doc:
+        txt = page.get_text().split('\n')
+        title, pts = (txt[0], txt[1:7]) if txt else ("Concept", [])
+        create_slide(prs, title, pts, theme_color, font_choice)
         
-        slide = prs.slides.add_slide(prs.slide_layouts[6])
-        # Background
-        fill = slide.background.fill
-        fill.solid()
-        fill.fore_color.rgb = RGBColor(*hex_to_rgb(theme["bg"]))
-        
-        # Title
-        t_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.5), Inches(12), Inches(1))
-        p = t_box.text_frame.paragraphs[0]
-        p.text, p.font.size, p.font.color.rgb = title, Pt(40), RGBColor(*hex_to_rgb(theme["title"]))
-        
-        # Body & Image Grid
-        body = slide.shapes.add_textbox(Inches(0.5), Inches(2), Inches(6), Inches(4))
-        for pt in points:
-            p = body.text_frame.add_paragraph()
-            p.text, p.font.size, p.font.color.rgb = f"• {pt}", Pt(20), RGBColor(*hex_to_rgb(theme["body"]))
-            
-        img = get_smart_image(title)
-        if img:
-            slide.shapes.add_picture(img, Inches(7), Inches(2), Inches(5.5), Inches(3.5))
-
     buf = io.BytesIO()
     prs.save(buf)
-    buf.seek(0)
-    st.download_button("Download Premium PPT", buf, "Presentation.pptx")
+    st.download_button("⚡ Download Final Premium PPT", buf.getvalue(), "Supriya_Pro_Presentation.pptx")
